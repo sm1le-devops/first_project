@@ -1,20 +1,64 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>FastAPI Test</title>
+  <meta charset="UTF-8" />
+  <title>Тестовый сайт с авторизацией</title>
 </head>
 <body>
-  <h1>FastAPI Server is Live</h1>
-  <button onclick="pingServer()">Ping Server</button>
-  <p id="result"></p>
+  <h1>Вход</h1>
+  <form id="loginForm">
+    <input type="text" id="username" placeholder="Username" required /><br />
+    <input type="password" id="password" placeholder="Password" required /><br />
+    <button type="submit">Войти</button>
+  </form>
+
+  <h2 id="profile"></h2>
 
   <script>
-    async function pingServer() {
-      const res = await fetch('/ping');
-      const data = await res.json();
-      document.getElementById('result').textContent = JSON.stringify(data);
-    }
+    const form = document.getElementById('loginForm');
+    const profile = document.getElementById('profile');
+    let token = '';
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+
+      const data = new URLSearchParams();
+      data.append('username', username);
+      data.append('password', password);
+
+      try {
+        const res = await fetch('/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: data
+        });
+        if (!res.ok) throw new Error('Ошибка логина');
+        const json = await res.json();
+        token = json.access_token;
+        profile.textContent = `Токен получен, пользователь: ${username}`;
+      } catch (err) {
+        profile.textContent = err.message;
+      }
+    });
+
+    profile.addEventListener('click', async () => {
+      if (!token) {
+        alert('Сначала войдите');
+        return;
+      }
+      try {
+        const res = await fetch('/me', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error('Не авторизован');
+        const json = await res.json();
+        profile.textContent = `Пользователь: ${json.username}`;
+      } catch (err) {
+        profile.textContent = err.message;
+      }
+    });
   </script>
 </body>
 </html>
