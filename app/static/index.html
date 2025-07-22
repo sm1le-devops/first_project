@@ -2,63 +2,170 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Тестовый сайт с авторизацией</title>
+  <title>Авторизация / Регистрация</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap');
+    * { box-sizing: border-box; }
+    body, html {
+      height: 100%;
+      margin: 0;
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: white;
+    }
+    .container {
+      background: rgba(255, 255, 255, 0.15);
+      padding: 40px 50px;
+      border-radius: 15px;
+      box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+      backdrop-filter: blur(12px);
+      width: 360px;
+      text-align: center;
+    }
+    h2 {
+      margin-bottom: 30px;
+      font-weight: 600;
+      letter-spacing: 1.2px;
+    }
+    .buttons {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 25px;
+      gap: 15px;
+    }
+    button.toggle-btn {
+      background: transparent;
+      border: 2px solid white;
+      color: white;
+      padding: 10px 30px;
+      font-size: 16px;
+      border-radius: 30px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+    button.toggle-btn.active,
+    button.toggle-btn:hover {
+      background: white;
+      color: #764ba2;
+      box-shadow: 0 4px 15px rgba(255, 255, 255, 0.4);
+    }
+    form input {
+      width: 100%;
+      padding: 14px 20px;
+      margin: 12px 0;
+      border-radius: 12px;
+      border: none;
+      font-size: 16px;
+      outline: none;
+      color: #333;
+    }
+    form input:focus {
+      box-shadow: 0 0 8px #764ba2;
+    }
+    form button.submit-btn {
+      width: 100%;
+      padding: 14px;
+      margin-top: 20px;
+      border-radius: 25px;
+      border: none;
+      background: #764ba2;
+      color: white;
+      font-size: 18px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+    form button.submit-btn:hover {
+      background: #8a5eea;
+      box-shadow: 0 0 10px #8a5eea;
+    }
+    .result-message {
+      margin-top: 20px;
+      font-weight: 600;
+      min-height: 24px;
+    }
+  </style>
 </head>
 <body>
-  <h1>Вход</h1>
-  <form id="loginForm">
-    <input type="text" id="username" placeholder="Username" required /><br />
-    <input type="password" id="password" placeholder="Password" required /><br />
-    <button type="submit">Войти</button>
-  </form>
-
-  <h2 id="profile"></h2>
+  <div class="container">
+    <h2 id="formTitle">Login</h2>
+    <div class="buttons">
+      <button class="toggle-btn active" id="loginBtn">Login</button>
+      <button class="toggle-btn" id="registerBtn">Register</button>
+    </div>
+    <form id="authForm">
+      <input type="text" id="username" name="username" placeholder="Username" required autocomplete="off" />
+      <input type="password" id="password" name="password" placeholder="Password" required autocomplete="off" />
+      <button type="submit" class="submit-btn" id="submitBtn">Sign In</button>
+    </form>
+    <div class="result-message" id="resultMessage"></div>
+  </div>
 
   <script>
-    const form = document.getElementById('loginForm');
-    const profile = document.getElementById('profile');
-    let token = '';
+    const loginBtn = document.getElementById('loginBtn');
+    const registerBtn = document.getElementById('registerBtn');
+    const formTitle = document.getElementById('formTitle');
+    const submitBtn = document.getElementById('submitBtn');
+    const authForm = document.getElementById('authForm');
+    const resultMessage = document.getElementById('resultMessage');
 
-    form.addEventListener('submit', async (e) => {
+    let mode = 'login';
+
+    loginBtn.addEventListener('click', () => switchMode('login'));
+    registerBtn.addEventListener('click', () => switchMode('register'));
+
+    function switchMode(newMode) {
+      mode = newMode;
+      loginBtn.classList.toggle('active', mode === 'login');
+      registerBtn.classList.toggle('active', mode === 'register');
+      formTitle.textContent = mode === 'login' ? 'Login' : 'Register';
+      submitBtn.textContent = mode === 'login' ? 'Sign In' : 'Sign Up';
+      resultMessage.textContent = '';
+      authForm.reset();
+    }
+
+    authForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const username = document.getElementById('username').value;
-      const password = document.getElementById('password').value;
+      const data = {
+        username: authForm.username.value.trim(),
+        password: authForm.password.value.trim(),
+      };
 
-      const data = new URLSearchParams();
-      data.append('username', username);
-      data.append('password', password);
-
-      try {
-        const res = await fetch('/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: data
-        });
-        if (!res.ok) throw new Error('Ошибка логина');
-        const json = await res.json();
-        token = json.access_token;
-        profile.textContent = `Токен получен, пользователь: ${username}`;
-      } catch (err) {
-        profile.textContent = err.message;
-      }
-    });
-
-    profile.addEventListener('click', async () => {
-      if (!token) {
-        alert('Сначала войдите');
+      if (!data.username || !data.password) {
+        resultMessage.style.color = 'salmon';
+        resultMessage.textContent = 'Please fill in all fields';
         return;
       }
+
+      const url = mode === 'login' ? '/login' : '/register';
+
       try {
-        const res = await fetch('/me', {
-          headers: { Authorization: `Bearer ${token}` }
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(data),
         });
-        if (!res.ok) throw new Error('Не авторизован');
-        const json = await res.json();
-        profile.textContent = `Пользователь: ${json.username}`;
-      } catch (err) {
-        profile.textContent = err.message;
+
+        const result = await response.json();
+
+        if (response.ok) {
+          resultMessage.style.color = 'lightgreen';
+          resultMessage.textContent = mode === 'login' ? 'Successfully logged in!' : 'Registration successful!';
+        } else {
+          resultMessage.style.color = 'salmon';
+          resultMessage.textContent = result.detail || 'Operation failed';
+        }
+      } catch {
+        resultMessage.style.color = 'salmon';
+        resultMessage.textContent = 'Error connecting to server';
       }
     });
+
+    switchMode('login');
   </script>
 </body>
 </html>
