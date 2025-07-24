@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Авторизация и регистрация</title>
+  <style>
+    body {
+      margin: 0;
+      height: 100vh;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: white;
+    }
+
+    #container {
+      background: rgba(0,0,0,0.3);
+      padding: 30px;
+      border-radius: 15px;
+      width: 320px;
+      box-sizing: border-box;
+      text-align: center;
+    }
+
+    input {
+      width: 100%;
+      margin: 10px 0;
+      padding: 10px;
+      border-radius: 6px;
+      border: none;
+      font-size: 16px;
+    }
+
+    button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 15px;
+      border: none;
+      border-radius: 6px;
+      background: #9b59b6;
+      font-size: 18px;
+      color: white;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+
+    button:hover {
+      background: #8e44ad;
+    }
+
+    .toggle-link {
+      margin-top: 15px;
+      display: block;
+      color: #ccc;
+      cursor: pointer;
+      text-decoration: underline;
+    }
+
+    .welcome-message {
+      font-size: 24px;
+      font-weight: 700;
+    }
+
+    #message {
+      margin-top: 10px;
+      font-weight: bold;
+    }
+
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="container">
+    <h2 id="form-title">Регистрация</h2>
+    <form id="auth-form" novalidate>
+      <input type="text" id="username" name="username" placeholder="Имя пользователя" required />
+      <input type="email" id="email" name="email" placeholder="Email" required />
+      <input type="password" id="password" name="password" placeholder="Пароль" required />
+      <button type="submit">Зарегистрироваться</button>
+    </form>
+    <p id="message"></p>
+    <span id="toggle-link" class="toggle-link">Уже есть аккаунт? Войти</span>
+  </div>
+
+  <script>
+    const form = document.getElementById('auth-form');
+    const usernameInput = document.getElementById('username');
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    const formTitle = document.getElementById('form-title');
+    const toggleLink = document.getElementById('toggle-link');
+    const message = document.getElementById('message');
+    const container = document.getElementById('container');
+
+    let isRegister = true;
+
+    toggleLink.addEventListener('click', () => {
+      isRegister = !isRegister;
+
+      formTitle.textContent = isRegister ? 'Регистрация' : 'Вход';
+      emailInput.required = isRegister;
+      emailInput.classList.toggle('hidden', !isRegister);
+      form.querySelector('button').textContent = isRegister ? 'Зарегистрироваться' : 'Войти';
+      toggleLink.textContent = isRegister ? 'Уже есть аккаунт? Войти' : 'Нет аккаунта? Зарегистрироваться';
+
+      // Сброс предыдущих сообщений
+      message.textContent = '';
+    });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const username = usernameInput.value.trim();
+      const password = passwordInput.value.trim();
+      const email = emailInput.value.trim();
+
+      const url = isRegister ? '/auth/register' : '/auth/login';
+      const payload = isRegister
+        ? { username, email, password }
+        : { username, password };
+
+      try {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+          container.innerHTML = `<div class="welcome-message">Добро пожаловать, ${username}!</div>`;
+        } else {
+          message.textContent = data.detail || "Ошибка. Проверьте введенные данные.";
+          message.style.color = 'red';
+        }
+      } catch (err) {
+        message.textContent = 'Ошибка подключения к серверу';
+        message.style.color = 'red';
+      }
+    });
+  </script>
+</body>
+</html>
