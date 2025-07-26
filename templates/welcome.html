@@ -55,6 +55,34 @@
       border: 2px solid white;
     }
 
+    /* Стили для ранга */
+    .rank {
+      display: inline-block;
+      min-width: 24px;
+      padding: 2px 6px;
+      margin-right: 8px;
+      border-radius: 8px;
+      font-weight: bold;
+      text-align: center;
+      vertical-align: middle;
+      color: black;
+      background-color: #ffd700; /* золотой фон для топ-3 */
+      border: 2px solid #daa520; /* темно-золотая рамка */
+    }
+
+    .rank-normal {
+      display: inline-block;
+      min-width: 24px;
+      padding: 2px 6px;
+      margin-right: 8px;
+      border-radius: 8px;
+      font-weight: normal;
+      color: white;
+      background-color: transparent;
+      border: none;
+      vertical-align: middle;
+    }
+
     form {
       margin-top: 30px;
       text-align: center;
@@ -150,6 +178,13 @@
         {% for user in top_users %}
         <tr>
           <td>
+            {% set rank = loop.index %}
+            {% if rank <= 3 %}
+              <span class="rank">{{ rank }}</span>
+            {% else %}
+              <span class="rank-normal">{{ rank }}</span>
+            {% endif %}
+
             <img class="avatar-small" src="{{ url_for('static', path='avatars/' + user.avatar) if user.avatar else url_for('static', path='default-avatar.png') }}" alt="Avatar" />
 
             {{ user.username }}
