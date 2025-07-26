@@ -15,7 +15,7 @@ import shutil
 router = APIRouter()
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-templates = Jinja2Templates(directory="static")
+templates = Jinja2Templates(directory="templates")
 
 UPLOAD_AVATAR_DIR = "static/avatars"
 os.makedirs(UPLOAD_AVATAR_DIR, exist_ok=True)
@@ -132,13 +132,6 @@ async def update_profile(
     db: Session = Depends(get_db),
     current_username: str | None = Cookie(default=None)
 ):
-    print(f"[LOG] current_username from cookie: {current_username}")
-    print(f"[LOG] form data - username: {username}, email: {email}, password: {'***' if password else '(empty)'}")
-    if avatar:
-        print(f"[LOG] avatar filename: {avatar.filename}, content_type: {avatar.content_type}")
-    else:
-        print("[LOG] avatar: None")
-
     if not current_username:
         raise HTTPException(status_code=401, detail="Не авторизован")
 
@@ -146,10 +139,11 @@ async def update_profile(
     if not user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
 
-    # Проверяем уникальность username/email
+    # Проверка уникальности username/email
     if username != current_username:
         if db.query(models.User).filter(models.User.username == username).first():
             raise HTTPException(status_code=400, detail="Имя пользователя уже занято")
+
     if email != user.email:
         if db.query(models.User).filter(models.User.email == email).first():
             raise HTTPException(status_code=400, detail="Email уже занят")
@@ -165,7 +159,7 @@ async def update_profile(
             raise HTTPException(status_code=400, detail="Тип аватара не поддерживается")
 
         ext = os.path.splitext(avatar.filename)[1]
-        avatar_filename = f"{user.username}{ext}"
+        avatar_filename = f"{username}{ext}"
         avatar_path = os.path.join(UPLOAD_AVATAR_DIR, avatar_filename)
 
         with open(avatar_path, "wb") as buffer:
@@ -176,8 +170,16 @@ async def update_profile(
     db.commit()
 
     response = JSONResponse(content={"message": "Профиль успешно обновлен"})
+
     if username != current_username:
-        response.set_cookie(key="username", value=username, path="/")
+        response.set_cookie(
+            key="username",
+            value=username,
+            path="/",
+            httponly=True,
+            samesite="lax",
+            secure=False
+        )
 
     return response
 
