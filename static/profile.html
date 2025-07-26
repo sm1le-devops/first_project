@@ -1,0 +1,121 @@
+<!DOCTYPE html> 
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>Профиль пользователя</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f0f0f0;
+      padding: 20px;
+    }
+    #profile-container {
+      max-width: 400px;
+      margin: auto;
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+    }
+    label {
+      font-weight: bold;
+      display: block;
+      margin-top: 15px;
+    }
+    input, button {
+      width: 100%;
+      margin: 10px 0;
+      padding: 10px;
+      font-size: 16px;
+      border: none;
+      border-radius: 8px;
+      outline: none;
+    }
+    input {
+      background: #f7f5fb;
+      transition: background-color 0.3s ease;
+    }
+    input:focus {
+      background: #e0d6f8;
+    }
+    button {
+      background: linear-gradient(135deg, #7b2ff7, #f107a3);
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+    button:hover {
+      background: linear-gradient(135deg, #f107a3, #7b2ff7);
+    }
+    img.avatar {
+      display: block;
+      margin: 0 auto 15px;
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid #666;
+    }
+  </style>
+</head>
+<body>
+  <div id="profile-container">
+    <h2>Профиль</h2>
+    <img src="{{ avatar_url or '/static/default-avatar.png' }}" alt="Аватар" class="avatar" id="avatar-preview" />
+    <form id="profile-form" enctype="multipart/form-data">
+      <label>Имя пользователя</label>
+      <input type="text" id="username" name="username" value="{{ current_user.username }}" required />
+      <label>Email</label>
+      <input type="email" id="email" name="email" value="{{ current_user.email }}" required />
+      <label>Новый пароль (оставьте пустым, чтобы не менять)</label>
+      <input type="password" id="password" name="password" placeholder="Новый пароль" />
+      <label>Загрузить новый аватар</label>
+      <input type="file" id="avatar" name="avatar" accept="image/*" />
+      <button type="submit">Сохранить изменения</button>
+    </form>
+    <p id="message"></p>
+    <a href="/auth/welcome">Назад</a>
+  </div>
+
+<script>
+  const form = document.getElementById('profile-form');
+  const message = document.getElementById('message');
+  const avatarInput = document.getElementById('avatar');
+  const avatarPreview = document.getElementById('avatar-preview');
+
+  avatarInput.addEventListener('change', () => {
+    const file = avatarInput.files[0];
+    if (file) {
+      avatarPreview.src = URL.createObjectURL(file);
+    }
+  });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const formData = new FormData(form);
+
+    try {
+      const res = await fetch('/auth/profile', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include'  // <--- важно для отправки куки
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        message.textContent = data.message || 'Профиль обновлен';
+        message.style.color = 'green';
+      } else {
+        message.textContent = data.detail || 'Ошибка при обновлении';
+        message.style.color = 'red';
+      }
+    } catch (err) {
+      message.textContent = 'Ошибка подключения к серверу';
+      message.style.color = 'red';
+    }
+  });
+</script>
+</body>
+</html>

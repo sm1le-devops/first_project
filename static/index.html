@@ -94,7 +94,6 @@
     const formTitle = document.getElementById('form-title');
     const toggleLink = document.getElementById('toggle-link');
     const message = document.getElementById('message');
-    const container = document.getElementById('container');
 
     let isRegister = true;
 
@@ -107,8 +106,8 @@
       form.querySelector('button').textContent = isRegister ? 'Зарегистрироваться' : 'Войти';
       toggleLink.textContent = isRegister ? 'Уже есть аккаунт? Войти' : 'Нет аккаунта? Зарегистрироваться';
 
-      // Сброс предыдущих сообщений
       message.textContent = '';
+      message.style.color = '';
     });
 
     form.addEventListener('submit', async (e) => {
@@ -133,9 +132,24 @@
         const data = await res.json();
 
         if (res.ok) {
-          container.innerHTML = `<div class="welcome-message">Добро пожаловать, ${username}!</div>`;
+          if (isRegister) {
+            message.textContent = data.message || 'Успешно зарегистрированы!';
+            message.style.color = 'lightgreen';
+
+            // переключаемся на форму входа
+            isRegister = false;
+            formTitle.textContent = 'Вход';
+            emailInput.classList.add('hidden');
+            emailInput.required = false;
+            form.querySelector('button').textContent = 'Войти';
+            toggleLink.textContent = 'Нет аккаунта? Зарегистрироваться';
+          } else {
+            // Вход — перенаправляем на welcome
+            window.location.href = data.redirect_url;
+          }
         } else {
-          message.textContent = data.detail || "Ошибка. Проверьте введенные данные.";
+          // Показываем ошибку от сервера
+          message.textContent = data.detail || 'Ошибка';
           message.style.color = 'red';
         }
       } catch (err) {
