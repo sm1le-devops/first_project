@@ -1,4 +1,4 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
@@ -6,55 +6,108 @@
   <style>
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: #f0f0f0;
+      background: linear-gradient(135deg, #bfa4ff, #7a63d8);
       padding: 20px;
+      color: #333;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
     }
+
     #profile-container {
-      max-width: 400px;
-      margin: auto;
-      background: white;
-      padding: 20px;
-      border-radius: 10px;
+      background: #f7f1ff;
+      padding: 20px 25px;
+      border-radius: 12px;
+      width: 350px;
+      box-shadow: 0 8px 20px rgba(122, 76, 224, 0.4);
+      text-align: center;
     }
-    label {
-      font-weight: bold;
-      display: block;
-      margin-top: 15px;
+
+    h2 {
+      margin-bottom: 20px;
+      font-weight: 600;
+      color: #4a2e9e;
     }
-    input, button {
-      width: 100%;
-      margin: 10px 0;
-      padding: 10px;
-      font-size: 16px;
-      border: none;
-      border-radius: 8px;
-      outline: none;
-    }
-    input {
-      background: #f7f5fb;
-      transition: background-color 0.3s ease;
-    }
-    input:focus {
-      background: #e0d6f8;
-    }
-    button {
-      background: linear-gradient(135deg, #7b2ff7, #f107a3);
-      color: white;
-      font-weight: bold;
-      cursor: pointer;
-      transition: background 0.3s ease;
-    }
-    button:hover {
-      background: linear-gradient(135deg, #f107a3, #7b2ff7);
-    }
+
     img.avatar {
-      display: block;
-      margin: 0 auto 15px;
-      width: 100px;
-      height: 100px;
+      width: 90px;
+      height: 90px;
       border-radius: 50%;
       object-fit: cover;
-      border: 2px solid #666;
+      border: 2px solid #7a4ce0;
+      margin-bottom: 15px;
+    }
+
+    form label {
+      display: block;
+      text-align: left;
+      margin-top: 10px;
+      font-weight: 600;
+      font-size: 14px;
+      color: #4a2e9e;
+    }
+
+    input, button {
+      width: 100%;
+      padding: 8px 12px;
+      margin-top: 5px;
+      border-radius: 8px;
+      border: none;
+      font-size: 14px;
+      outline: none;
+      box-sizing: border-box;
+    }
+
+    input {
+      background: #e3dcff;
+      color: #4a2e9e;
+      transition: background-color 0.3s ease;
+    }
+
+    input::placeholder {
+      color: #9b8ed6;
+    }
+
+    input:focus {
+      background: #d0c1ff;
+      color: #3e228e;
+    }
+
+    button {
+      margin-top: 20px;
+      background: linear-gradient(135deg, #7a4ce0, #5a31b8);
+      color: white;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 6px 15px rgba(122, 76, 224, 0.6);
+      transition: background 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    button:hover {
+      background: linear-gradient(135deg, #5a31b8, #7a4ce0);
+      box-shadow: 0 8px 20px rgba(122, 76, 224, 0.8);
+    }
+
+    #message {
+      margin-top: 15px;
+      min-height: 18px;
+      font-weight: 600;
+      color: #5a31b8;
+    }
+
+    a {
+      display: inline-block;
+      margin-top: 15px;
+      color: #7a4ce0;
+      text-decoration: none;
+      font-size: 14px;
+      transition: color 0.3s ease;
+    }
+
+    a:hover {
+      color: #5a31b8;
     }
   </style>
 </head>
@@ -65,57 +118,61 @@
     <form id="profile-form" enctype="multipart/form-data">
       <label>Имя пользователя</label>
       <input type="text" id="username" name="username" value="{{ current_user.username }}" required />
+
       <label>Email</label>
       <input type="email" id="email" name="email" value="{{ current_user.email }}" required />
+
       <label>Новый пароль (оставьте пустым, чтобы не менять)</label>
       <input type="password" id="password" name="password" placeholder="Новый пароль" />
+
       <label>Загрузить новый аватар</label>
       <input type="file" id="avatar" name="avatar" accept="image/*" />
+
       <button type="submit">Сохранить изменения</button>
     </form>
     <p id="message"></p>
     <a href="/auth/welcome">Назад</a>
   </div>
 
-<script>
-  const form = document.getElementById('profile-form');
-  const message = document.getElementById('message');
-  const avatarInput = document.getElementById('avatar');
-  const avatarPreview = document.getElementById('avatar-preview');
+  <script>
+    const form = document.getElementById('profile-form');
+    const message = document.getElementById('message');
+    const avatarInput = document.getElementById('avatar');
+    const avatarPreview = document.getElementById('avatar-preview');
 
-  avatarInput.addEventListener('change', () => {
-    const file = avatarInput.files[0];
-    if (file) {
-      avatarPreview.src = URL.createObjectURL(file);
-    }
-  });
-
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-
-    const formData = new FormData(form);
-
-    try {
-      const res = await fetch('/auth/profile', {
-        method: 'POST',
-        credentials: 'include',
-        body: formData // <--- важно для отправки куки
-      });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        message.textContent = data.message || 'Профиль обновлен';
-        message.style.color = 'green';
-      } else {
-        message.textContent = data.detail || 'Ошибка при обновлении';
-        message.style.color = 'red';
+    avatarInput.addEventListener('change', () => {
+      const file = avatarInput.files[0];
+      if (file) {
+        avatarPreview.src = URL.createObjectURL(file);
       }
-    } catch (err) {
-      message.textContent = 'Ошибка подключения к серверу';
-      message.style.color = 'red';
-    }
-  });
-</script>
+    });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const formData = new FormData(form);
+
+      try {
+        const res =  await fetch('/auth/profile', {
+          method: 'POST',
+          credentials: 'include',
+          body: formData 
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+          message.textContent = data.message || 'Профиль обновлен';
+          message.style.color = '#4a2e9e';
+        } else {
+          message.textContent = data.detail || 'Ошибка при обновлении';
+          message.style.color = '#d6336c';
+        }
+      } catch (err) {
+        message.textContent = 'Ошибка подключения к серверу';
+        message.style.color = '#d6336c';
+      }
+    });
+  </script>
 </body>
 </html>

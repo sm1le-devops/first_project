@@ -150,7 +150,8 @@
         {% for user in top_users %}
         <tr>
           <td>
-            <img class="avatar-small" src="{{ user.avatar or '/static/default-avatar.png' }}" alt="Avatar" />
+            <img class="avatar-small" src="{{ url_for('static', path='avatars/' + user.avatar) if user.avatar else url_for('static', path='default-avatar.png') }}" alt="Avatar" />
+
             {{ user.username }}
           </td>
           <td>{{ user.amount }}</td>
@@ -177,7 +178,8 @@
 
   <!-- Аватар + кнопка "Профиль" сверху справа -->
   <div class="profile-top-right">
-    <img src="{{ current_user.avatar or '/static/default-avatar.png' }}" alt="Ваш аватар" class="avatar-large" />
+    <img src="{{ '/static/avatars/' + current_user.avatar if current_user.avatar else '/static/default-avatar.png' }}" alt="Ваш аватар" class="avatar-large" />
+
     <a href="/auth/profile">Профиль</a>
   </div>
 

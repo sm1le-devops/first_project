@@ -1,44 +1,23 @@
-from fastapi import FastAPI, Depends, HTTPException, status, Response, Cookie, Request, File, UploadFile, Form
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse, JSONResponse
-from fastapi.templating import Jinja2Templates
-from fastapi.middleware.cors import CORSMiddleware
-
+from fastapi import APIRouter, Depends, HTTPException, status, Response, Cookie, Request
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
+from database import SessionLocal
+import models, schemas
+from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
 from datetime import datetime
+from fastapi import File, UploadFile, Form
 import os
+
+from fastapi.staticfiles import StaticFiles
 import shutil
 
-import models
-import schemas
-from database import engine, SessionLocal
-
-# Создаём таблицы
-models.Base.metadata.create_all(bind=engine)
-
-app = FastAPI()
-
-# Статические файлы и шаблоны
-app.mount("/static", StaticFiles(directory="static"), name="static")
-templates = Jinja2Templates(directory="templates")
-
-# CORS
-origins = [
-    "http://localhost:8000",
-    "http://127.0.0.1:8000"
-]
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+router = APIRouter()
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+templates = Jinja2Templates(directory="templates")
+
 UPLOAD_AVATAR_DIR = "static/avatars"
 os.makedirs(UPLOAD_AVATAR_DIR, exist_ok=True)
 
@@ -55,12 +34,9 @@ def verify_password(plain_password, hashed_password):
 def get_password_hash(password):
     return pwd_context.hash(password)
 
-@app.get("/")
-async def root(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
 
-# ----- Регистрация -----
-@app.post("/auth/register")
+
+@router.post("/register")
 def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db_user = db.query(models.User).filter(
         (models.User.username == user.username) | (models.User.email == user.email)
@@ -75,8 +51,9 @@ def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db.refresh(new_user)
     return {"message": "Вы успешно зарегистрированы"}
 
-# ----- Вход -----
-@app.post("/auth/login")
+
+
+@router.post("/login")
 def login(user: schemas.UserLogin, db: Session = Depends(get_db)):
     db_user = db.query(models.User).filter(models.User.username == user.username).first()
     if not db_user or not verify_password(user.password, db_user.hashed_password):
@@ -84,17 +61,17 @@ def login(user: schemas.UserLogin, db: Session = Depends(get_db)):
 
     response = JSONResponse(content={"redirect_url": "/auth/welcome"})
     response.set_cookie(
-        key="username",
-        value=db_user.username,
-        path="/",
-        httponly=True,
-        samesite="lax",
-        secure=False
-    )
+    key="username",
+    value=db_user.username,
+    path="/",
+    httponly=True,
+    samesite="lax",  
+    secure=False     
+        )
+  
     return response
 
-# ----- Приветствие -----
-@app.get("/auth/welcome", response_class=HTMLResponse)
+@router.get("/welcome", response_class=HTMLResponse)
 def welcome(request: Request, db: Session = Depends(get_db), username: str | None = Cookie(default=None)):
     if not username:
         raise HTTPException(status_code=401, detail="Не авторизован")
@@ -108,11 +85,11 @@ def welcome(request: Request, db: Session = Depends(get_db), username: str | Non
         "current_user": current_user
     })
 
-# ----- Донат -----
+
 class DonateRequest(BaseModel):
     amount: int
 
-@app.post("/auth/donate")
+@router.post("/donate")
 def donate(data: DonateRequest, username: str | None = Cookie(default=None), db: Session = Depends(get_db)):
     if not username:
         raise HTTPException(status_code=401, detail="Не авторизован")
@@ -130,8 +107,8 @@ def donate(data: DonateRequest, username: str | None = Cookie(default=None), db:
 
     return {"message": "Спасибо за донат!"}
 
-# ----- Профиль -----
-@app.get("/auth/profile", response_class=HTMLResponse)
+
+@router.get("/profile", response_class=HTMLResponse)
 def profile(request: Request, db: Session = Depends(get_db), username: str | None = Cookie(default=None)):
     if not username:
         raise HTTPException(status_code=401, detail="Не авторизован")
@@ -140,6 +117,7 @@ def profile(request: Request, db: Session = Depends(get_db), username: str | Non
     if not user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
 
+    # Формируем URL аватара для шаблона, если аватар есть
     avatar_url = f"/static/avatars/{user.avatar}" if user.avatar else None
 
     return templates.TemplateResponse("profile.html", {
@@ -147,18 +125,15 @@ def profile(request: Request, db: Session = Depends(get_db), username: str | Non
         "current_user": user,
         "avatar_url": avatar_url
     })
-
-from typing import Optional
-
-@app.post("/auth/profile")
+@router.post("/profile")
 async def update_profile(
     request: Request,
-    username: Optional[str] = Form(None),
-    email: Optional[str] = Form(None),
-    password: Optional[str] = Form(None),
-    avatar: Optional[UploadFile] = File(None),
+    username: str = Form(...),
+    email: str = Form(...),
+    password: str = Form(""),
+    avatar: UploadFile | None = File(None),
     db: Session = Depends(get_db),
-    current_username: str = Cookie(..., alias="username")
+    current_username: str | None = Cookie(default=None)
 ):
     if not current_username:
         raise HTTPException(status_code=401, detail="Не авторизован")
@@ -167,25 +142,27 @@ async def update_profile(
     if not user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
 
-    if username and username != current_username:
+    # Проверка уникальности username/email
+    if username != current_username:
         if db.query(models.User).filter(models.User.username == username).first():
             raise HTTPException(status_code=400, detail="Имя пользователя уже занято")
-        user.username = username
 
-    if email and email != user.email:
+    if email != user.email:
         if db.query(models.User).filter(models.User.email == email).first():
             raise HTTPException(status_code=400, detail="Email уже занят")
-        user.email = email
+
+    user.username = username
+    user.email = email
 
     if password:
         user.hashed_password = get_password_hash(password)
 
-    if avatar and avatar.filename:
+    if avatar:
         if avatar.content_type not in ["image/png", "image/jpeg", "image/svg+xml"]:
             raise HTTPException(status_code=400, detail="Тип аватара не поддерживается")
 
         ext = os.path.splitext(avatar.filename)[1]
-        avatar_filename = f"{user.username}{ext}"
+        avatar_filename = f"{username}{ext}"
         avatar_path = os.path.join(UPLOAD_AVATAR_DIR, avatar_filename)
 
         with open(avatar_path, "wb") as buffer:
@@ -195,10 +172,9 @@ async def update_profile(
 
     db.commit()
 
-    response = JSONResponse(content={"message": "Профиль успешно обновлён"})
+    response = JSONResponse(content={"message": "Профиль успешно обновлен"})
 
-    # Обновляем куку, если username был изменён
-    if username and username != current_username:
+    if username != current_username:
         response.set_cookie(
             key="username",
             value=username,
@@ -209,3 +185,4 @@ async def update_profile(
         )
 
     return response
+
